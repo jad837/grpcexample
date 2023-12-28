@@ -1,0 +1,24 @@
+<!doctype HTML>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Testing api on http1 vs http2</title>
+</head>
+<body>
+<script>
+    var index = 0;
+    while(index < 2000){
+        fetch("https://127.0.0.1:8080/getData?limit=100&offset="+index).then((response) => {
+            return response.json();
+        }).then( (data) => {
+            document.write("<tr>"+ data.id+"</tr>");
+        })
+        index++;
+    }
+</script>
+<table>
+    <thead>Data table </thead>
+
+</table>
+</body>
+</html>

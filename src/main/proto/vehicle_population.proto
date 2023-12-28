@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package com.blogs.grpcblog.proto;
+
+option java_package = "com.blogs.grpcblog.proto";
+option java_multiple_files = true;
+
+message VehiclePopulation {
+  uint64 id = 1;
+  string vin = 2;
+  string county = 3;
+  string city = 4;
+  string state = 5;
+  uint64 postalCode = 6;
+  uint32  modelYear = 7;
+  string make =8;
+  string model =9;
+  string type =10;
+  string cleanAlternativeFuelVehicle = 11;
+  uint32 electricRange = 12;
+  uint32 baseMsrp = 13;
+  uint32 legislativeDistrict = 14;
+  string vehicleId = 15;
+  string electricUtility = 16;
+  uint64  censusTract = 17;
+}
