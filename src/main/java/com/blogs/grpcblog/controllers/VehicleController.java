@@ -2,6 +2,7 @@ package com.blogs.grpcblog.controllers;
 
 import com.blogs.grpcblog.models.VehicleResponseModel;
 import com.blogs.grpcblog.proto.VehiclePopulation;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
@@ -22,6 +23,8 @@ import java.util.concurrent.TimeUnit;
 @CrossOrigin
 @Slf4j
 public class VehicleController {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
     @GetMapping(value = "/v1/getdata", produces = "application/json")
     public List<VehicleResponseModel> getVehicleData(@RequestParam Integer limit, @RequestParam Integer offset) throws IOException {
         log.info("get vehicle data endpoint");
@@ -59,19 +62,31 @@ public class VehicleController {
         var records = getCSVRecords();
         var watch = new StopWatch();
         log.info("starting json parsing");
-        watch.start("json");
-        var jsonRecords = records.stream().map(this::recordToJsonResponse).toList();
+        watch.start("csvtojsonpojo");
+        var jsonRecord = recordToJsonResponse(records.get(100));
+        watch.stop();
+        watch.start("pojotojsonmarshalling");
+        var serializedjson = objectMapper.writeValueAsBytes(jsonRecord);
+        var deserializedjson = objectMapper.readValue(serializedjson, VehicleResponseModel.class);
         watch.stop();
         log.info("time taken to complete json parsing : {}", watch.prettyPrint(TimeUnit.MILLISECONDS));
 
+        log.info("call gc to destroy json objects");
+
         log.info("starting proto parsing");
-        watch.start("proto");
-        var protoRecords = records.stream().map(this::recordToProtoResponse).toList();
+        watch.start("csvtoprotopojo");
+        var protoRecord = recordToProtoResponse(records.get(100));
+        watch.stop();
+        watch.start("protopojomarshalling");
+        var serializedProto = protoRecord.toByteArray();
+        var deserializedProto = VehiclePopulation.parseFrom(serializedProto);
         watch.stop();
         log.info("time taken to complete proto parsing : {}", watch.prettyPrint(TimeUnit.MILLISECONDS));
 
         log.info("comparison is done for protobuf vs json vs xml");
     }
+
+
 
     private VehicleResponseModel recordToJsonResponse(CSVRecord record) {
         VehicleResponseModel response = new VehicleResponseModel();
