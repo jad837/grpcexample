@@ -7,13 +7,25 @@
 <body>
 <script>
     var index = 0;
+    var limit=100;
     while(index < 2000){
-        fetch("https://127.0.0.1:8080/getData?limit=100&offset="+index).then((response) => {
+        fetch("https://127.0.0.1:8080/v1/getdata?limit=100&offset="+index, {
+            method: "GET",
+            credentials: "omit", // include, *same-origin, omit
+            headers: {
+                "Referer": "no-referrer",
+                "Access-Control-Allow-Origin" :"https://127.0.0.1",
+                "Content-Type": "application/json"
+            }
+        }).then((response) => {
             return response.json();
         }).then( (data) => {
-            document.write("<tr>"+ data.id+"</tr>");
+            data.forEach(element => {
+                document.write("<tr>"+ element.id+"</tr></br>");
+            });
+
         })
-        index++;
+        index+=limit;
     }
 </script>
 <table>

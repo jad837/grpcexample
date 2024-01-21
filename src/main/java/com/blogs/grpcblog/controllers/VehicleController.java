@@ -1,8 +1,10 @@
 package com.blogs.grpcblog.controllers;
 
 import com.blogs.grpcblog.models.VehicleResponseModel;
+import com.blogs.grpcblog.proto.Response;
 import com.blogs.grpcblog.proto.VehiclePopulation;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
@@ -16,8 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @RestController
 @CrossOrigin
@@ -25,8 +30,10 @@ import java.util.concurrent.TimeUnit;
 public class VehicleController {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+
     @GetMapping(value = "/v1/getdata", produces = "application/json")
-    public List<VehicleResponseModel> getVehicleData(@RequestParam Integer limit, @RequestParam Integer offset) throws IOException {
+    public List<VehicleResponseModel> getVehicleData(@RequestParam Integer limit, @RequestParam Integer offset, HttpServletResponse response) throws IOException {
         log.info("get vehicle data endpoint");
         String[] csvHeaders = {"vin", "county","city","state","postal_code","model_year","make","model","type","cafv","range","msrp","legislative_district","vehicle_id","location","electric_utility","census_tract"};
 
@@ -38,6 +45,9 @@ public class VehicleController {
         ){
             log.info("entered into lions cave");
             var validRecords = records.getRecords().stream().filter(rec -> rec.getRecordNumber()< offset+limit && rec.getRecordNumber() >=offset).toList();
+//            response.addHeader("Access-Control-Allow-Origin", "https://127.0.0.1");
+            response.addHeader("Access-Control-Allow-Private-Network", "true");
+
             return validRecords.stream().map(this::recordToJsonResponse).toList();
         }
 
@@ -46,7 +56,7 @@ public class VehicleController {
     private List<CSVRecord> getCSVRecords() throws IOException {
         String[] csvHeaders = {"vin", "county","city","state","postal_code","model_year","make","model","type","cafv","range","msrp","legislative_district","vehicle_id","location","electric_utility","census_tract"};
 
-        var csvFormat = CSVFormat.DEFAULT.builder().setHeader(csvHeaders).setSkipHeaderRecord(true).build();
+        var csvFormat = CSVFormat.DEFAULT.builder().setDelimiter(',').setHeader(csvHeaders).setSkipHeaderRecord(true).build();
         var file = new File("F:\\projects\\blogs\\grpcblog\\src\\main\\resources\\static\\datasets\\electic_vehicle_population_data.csv");
         try(
                 var csvReader = new FileReader(file);
@@ -56,34 +66,39 @@ public class VehicleController {
         }
     }
 
-    @GetMapping(value = "/v1/compareproto", produces = "application/json")
+    @GetMapping(value = "/v1/compare", produces = "application/json")
     public void getVehiclePopulation() throws IOException {
-        log.info("protobuf vs xml vs json");
         var records = getCSVRecords();
         var watch = new StopWatch();
-        log.info("starting json parsing");
+
         watch.start("csvtojsonpojo");
-        var jsonRecord = recordToJsonResponse(records.get(100));
+        List<VehicleResponseModel> jsonRecords = records.stream().map(this::recordToJsonResponse).toList();
         watch.stop();
-        watch.start("pojotojsonmarshalling");
-        var serializedjson = objectMapper.writeValueAsBytes(jsonRecord);
-        var deserializedjson = objectMapper.readValue(serializedjson, VehicleResponseModel.class);
+
+        watch.start("serialization-pojo-to-jsonbytes");
+        var serializedjson = objectMapper.writeValueAsBytes(jsonRecords);
         watch.stop();
-        log.info("time taken to complete json parsing : {}", watch.prettyPrint(TimeUnit.MILLISECONDS));
+        log.info("size of serialized json: {}", serializedjson.length);
 
-        log.info("call gc to destroy json objects");
+        watch.start("deserialize-jsonbytes-to-pojo");
+        var deserializedjson = objectMapper.readValue(serializedjson, VehicleResponseModel[].class);
+        watch.stop();
 
-        log.info("starting proto parsing");
         watch.start("csvtoprotopojo");
-        var protoRecord = recordToProtoResponse(records.get(100));
+        var protoRecords = records.stream().map(this::recordToProtoResponse).toList();
+        var protos = Response.newBuilder().addAllVehiclePopulations(protoRecords).build();
         watch.stop();
-        watch.start("protopojomarshalling");
-        var serializedProto = protoRecord.toByteArray();
+
+        watch.start("serialize-pojo-to-protobytes");
+        var serializedProto = protos.toByteArray();
+        watch.stop();
+        log.info("size of serialized proto : {}", serializedProto.length);
+
+        watch.start("deserialize-protoBytes-to-pojo");
         var deserializedProto = VehiclePopulation.parseFrom(serializedProto);
         watch.stop();
-        log.info("time taken to complete proto parsing : {}", watch.prettyPrint(TimeUnit.MILLISECONDS));
 
-        log.info("comparison is done for protobuf vs json vs xml");
+        log.info("time taken by each process of parsing : {}", watch.prettyPrint(TimeUnit.MILLISECONDS));
     }
 
 

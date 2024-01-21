@@ -12,9 +12,9 @@ message VehiclePopulation {
   string city = 4;
   string state = 5;
   uint64 postalCode = 6;
-  uint32  modelYear = 7;
-  string make =8;
-  string model =9;
+  uint32 modelYear = 7;
+  string make = 8;
+  string model = 9;
   string type =10;
   string cleanAlternativeFuelVehicle = 11;
   uint32 electricRange = 12;
@@ -23,4 +23,8 @@ message VehiclePopulation {
   string vehicleId = 15;
   string electricUtility = 16;
   uint64  censusTract = 17;
+}
+
+message Response {
+  repeated VehiclePopulation vehiclePopulations = 1;
 }
