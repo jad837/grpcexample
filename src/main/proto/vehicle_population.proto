@@ -28,3 +28,12 @@ message VehiclePopulation {
 message Response {
   repeated VehiclePopulation vehiclePopulations = 1;
 }
+
+message Request {
+  uint32 limit = 1;
+  uint32 offset = 2;
+}
+
+service VehiclePopulationData {
+  rpc get(Request) returns (Response);
+}
